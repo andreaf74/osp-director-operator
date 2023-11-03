@@ -1083,14 +1083,29 @@ outer:
 		if foundBaremetalHost.Spec.ConsumerRef == nil {
 			foundBaremetalHost.Spec.Online = true
 			foundBaremetalHost.Spec.ConsumerRef = &corev1.ObjectReference{Name: instance.Name, Kind: instance.Kind, Namespace: instance.Namespace}
-			foundBaremetalHost.Spec.UserData = &corev1.SecretReference{
-				Name:      userDataSecretName,
-				Namespace: "openshift-machine-api",
-			}
-			foundBaremetalHost.Spec.NetworkData = &corev1.SecretReference{
-				Name:      networkDataSecretName,
-				Namespace: "openshift-machine-api",
-			}
+   //  
+   // Does not overwrite UserData Secrete if already set on BMH
+   //  
+      if foundBaremetalHost.Spec.UserData == nil {
+			  foundBaremetalHost.Spec.UserData = &corev1.SecretReference{
+          Name:      userDataSecretName,
+				  Namespace: "openshift-machine-api",
+			  }
+      } else {
+   // If  secret exists forget about the custom one
+        userDataSecretName = nil
+      }
+   //  
+   // Does not overwrite NetowrkData Secrete if already set on BMH
+   //  
+      if foundBaremetalHost.Spec.NetworkData == nil {
+			  foundBaremetalHost.Spec.NetworkData = &corev1.SecretReference{
+			  	Name:      networkDataSecretName,
+			  	Namespace: "openshift-machine-api",
+			  }
+      } else {
+   // If  secret exists forget about the custom one
+        networkDataSecretName = nil
 		}
 
 		return nil
@@ -1116,8 +1131,12 @@ outer:
 	//
 	// Update status with BMH provisioning details
 	//
-	bmhStatus.UserDataSecretName = userDataSecretName
-	bmhStatus.NetworkDataSecretName = networkDataSecretName
+	if userDataSecretName != nil  {
+      bmhStatus.UserDataSecretName = userDataSecretName
+  }
+	if networkDataSecretName != nil {
+      bmhStatus.NetworkDataSecretName = networkDataSecretName
+  }
 	bmhStatus.ProvisioningState = shared.ProvisioningState(foundBaremetalHost.Status.Provisioning.State)
 
 	actualBMHStatus := instance.Status.BaremetalHosts[bmhStatus.Hostname]
