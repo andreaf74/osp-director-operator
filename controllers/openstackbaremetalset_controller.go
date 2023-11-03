@@ -1083,33 +1083,35 @@ outer:
 		if foundBaremetalHost.Spec.ConsumerRef == nil {
 			foundBaremetalHost.Spec.Online = true
 			foundBaremetalHost.Spec.ConsumerRef = &corev1.ObjectReference{Name: instance.Name, Kind: instance.Kind, Namespace: instance.Namespace}
-   //  
-   // Does not overwrite UserData Secrete if already set on BMH
-   //  
-      if foundBaremetalHost.Spec.UserData == nil {
-			  foundBaremetalHost.Spec.UserData = &corev1.SecretReference{
-          Name:      userDataSecretName,
-				  Namespace: "openshift-machine-api",
-			  }
-      } else {
-   // If  secret exists forget about the custom one
-        userDataSecretName = nil
-      }
-   //  
-   // Does not overwrite NetowrkData Secrete if already set on BMH
-   //  
-      if foundBaremetalHost.Spec.NetworkData == nil {
-			  foundBaremetalHost.Spec.NetworkData = &corev1.SecretReference{
-			  	Name:      networkDataSecretName,
-			  	Namespace: "openshift-machine-api",
-			  }
-      } else {
-   // If  secret exists forget about the custom one
-        networkDataSecretName = nil
+			//
+			// Does not overwrite UserData Secrete if already set on BMH
+			//
+			if foundBaremetalHost.Spec.UserData == nil {
+				foundBaremetalHost.Spec.UserData = &corev1.SecretReference{
+					Name:      userDataSecretName,
+					Namespace: "openshift-machine-api",
+				}
+			} else {
+				// If  secret exists forget about the custom one
+				userDataSecretName = ""
+			}
+			//
+			// Does not overwrite NetowrkData Secrete if already set on BMH
+			//
+			if foundBaremetalHost.Spec.NetworkData == nil {
+				foundBaremetalHost.Spec.NetworkData = &corev1.SecretReference{
+					Name:      networkDataSecretName,
+					Namespace: "openshift-machine-api",
+				}
+			} else {
+				// If  secret exists forget about the custom one
+				networkDataSecretName = ""
+			}
 		}
 
 		return nil
 	})
+
 	if err != nil {
 		cond.Message = fmt.Sprintf("Error update %s BMH %s", foundBaremetalHost.Kind, foundBaremetalHost.Name)
 		cond.Reason = shared.BaremetalHostCondReasonUpdateError
@@ -1119,7 +1121,6 @@ outer:
 
 		return err
 	}
-
 	if op != controllerutil.OperationResultNone {
 		common.LogForObject(
 			r,
@@ -1131,12 +1132,12 @@ outer:
 	//
 	// Update status with BMH provisioning details
 	//
-	if userDataSecretName != nil  {
-      bmhStatus.UserDataSecretName = userDataSecretName
-  }
-	if networkDataSecretName != nil {
-      bmhStatus.NetworkDataSecretName = networkDataSecretName
-  }
+	if userDataSecretName != "" {
+		bmhStatus.UserDataSecretName = userDataSecretName
+	}
+	if networkDataSecretName != "" {
+		bmhStatus.NetworkDataSecretName = networkDataSecretName
+	}
 	bmhStatus.ProvisioningState = shared.ProvisioningState(foundBaremetalHost.Status.Provisioning.State)
 
 	actualBMHStatus := instance.Status.BaremetalHosts[bmhStatus.Hostname]
@@ -1147,7 +1148,6 @@ outer:
 				bmhStatus.Hostname,
 				diff.ObjectReflectDiff(actualBMHStatus, bmhStatus)),
 			instance)
-
 		instance.Status.BaremetalHosts[bmhStatus.Hostname] = bmhStatus
 	}
 
